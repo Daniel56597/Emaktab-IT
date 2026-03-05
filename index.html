@@ -3,442 +3,371 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maktab - System</title>
+    <title>Maktab - Система Обучения</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .hidden { display: none; }
-        .tab-view { animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .post-card { border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); background: white; border: 1px solid #f1f5f9; margin-bottom: 1.5rem; }
-        .coin-badge { background: linear-gradient(90deg, #ffd700, #ffa500); color: white; padding: 2px 10px; border-radius: 20px; font-weight: bold; }
-        .upload-area { border: 2px dashed #cbd5e1; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; transition: 0.3s; }
-        .upload-area:hover { background: #f1f5f9; border-color: #3b82f6; }
-        .test-option { border: 2px solid #e2e8f0; border-radius: 15px; padding: 15px; cursor: pointer; transition: 0.2s; }
-        .test-option:hover { border-color: #3b82f6; background: #eff6ff; }
-        .test-option.selected { border-color: #3b82f6; background: #3b82f6; color: white; }
+        .hidden { display: none !important; }
+        .tab-view { animation: slideUp 0.4s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .section-header { font-size: 1.5rem; font-weight: 900; color: #1e293b; margin-bottom: 1.5rem; font-style: italic; border-left: 5px solid #3b82f6; padding-left: 15px; text-transform: uppercase; }
+        .card { border-radius: 24px; border: 1px solid #f1f5f9; background: white; transition: 0.3s; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-slate-50 text-slate-900 font-sans">
 
-    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-blue-600 px-4">
-        <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md">
-            <div class="text-center mb-8">
-                <h1 class="text-4xl font-black text-blue-700 italic">Maktab</h1>
-                <p class="text-gray-400 mt-2">Введите данные для входа</p>
-            </div>
-            <div class="space-y-4">
-                <input type="text" id="log-user" placeholder="Логин" class="w-full p-4 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-                <input type="password" id="log-pass" placeholder="Пароль" class="w-full p-4 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-                <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 shadow-lg transition uppercase">Войти</button>
-            </div>
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-blue-700 px-4">
+        <div class="bg-white p-10 rounded-[40px] shadow-2xl w-full max-w-md text-center">
+            <h1 class="text-3xl font-black text-slate-800 italic mb-8 uppercase">Maktab Login</h1>
+            <div id="login-error" class="hidden bg-red-100 text-red-600 p-3 rounded-xl mb-4 text-sm font-bold">Ошибка доступа</div>
+            <input type="text" id="log-user" placeholder="Логин" class="w-full p-4 bg-slate-100 rounded-2xl mb-4 outline-none border focus:border-blue-500">
+            <input type="password" id="log-pass" placeholder="Пароль" class="w-full p-4 bg-slate-100 rounded-2xl mb-6 outline-none border focus:border-blue-500">
+            <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition">ВОЙТИ В СИСТЕМУ</button>
         </div>
     </div>
 
     <div id="main-app" class="hidden min-h-screen flex flex-col">
-        <nav class="bg-white border-b p-4 flex justify-between items-center px-8 sticky top-0 z-50">
-            <div class="text-2xl font-black text-blue-600 italic">Maktab</div>
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2 bg-yellow-50 px-4 py-2 rounded-2xl border border-yellow-200">
-                    <i class="fas fa-coins text-yellow-500"></i>
-                    <span id="user-coins" class="font-bold text-yellow-700">0</span>
-                    <span class="text-xs font-bold text-yellow-600">MC</span>
+        <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b p-4 px-8 flex justify-between items-center">
+            <div class="text-2xl font-black text-blue-600 italic flex items-center gap-2"><i class="fas fa-graduation-cap"></i> MAKTAB</div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:block text-right mr-2">
+                    <p id="user-name" class="font-bold text-sm leading-none"></p>
+                    <p id="user-role-label" class="text-[10px] text-slate-400 font-black uppercase tracking-tighter"></p>
                 </div>
-                <div id="user-info" class="text-right hidden sm:block">
-                    <div id="user-display" class="font-bold text-gray-900 leading-none"></div>
-                    <div id="role-display" class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1"></div>
+                <div class="flex items-center gap-2 bg-blue-100 px-4 py-2 rounded-2xl text-blue-700 font-black">
+                    <i class="fas fa-star text-blue-500"></i> <span id="user-total-score">0</span>
                 </div>
-                <button onclick="location.reload()" class="bg-gray-100 hover:bg-red-50 hover:text-red-600 p-2 px-4 rounded-xl text-sm font-bold transition flex items-center gap-2">
-                    <i class="fas fa-sign-out-alt"></i> Выход
-                </button>
+                <button onclick="location.reload()" class="text-slate-400 hover:text-red-500 transition text-xl"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </nav>
 
         <div class="container mx-auto flex flex-col md:flex-row p-6 gap-8">
             <aside class="w-full md:w-64 space-y-2">
-                <button onclick="showTab('news')" class="w-full text-left p-4 bg-white hover:bg-blue-600 hover:text-white rounded-2xl shadow-sm transition-all font-bold flex items-center gap-3">
-                    <i class="fas fa-home"></i> Новости
-                </button>
-                <button onclick="showTab('grades')" class="w-full text-left p-4 bg-white hover:bg-green-600 hover:text-white rounded-2xl shadow-sm transition-all font-bold flex items-center gap-3">
-                    <i class="fas fa-star"></i> Оценки
-                </button>
-                <button onclick="showTab('tests')" class="w-full text-left p-4 bg-white hover:bg-purple-600 hover:text-white rounded-2xl shadow-sm transition-all font-bold flex items-center gap-3">
-                    <i class="fas fa-file-alt"></i> Тесты / КР
-                </button>
-                <button onclick="showTab('shop')" class="w-full text-left p-4 bg-white hover:bg-yellow-500 hover:text-white rounded-2xl shadow-sm transition-all font-bold flex items-center gap-3">
-                    <i class="fas fa-shopping-cart"></i> Магазин
-                </button>
-                <button id="admin-only-btn" onclick="showTab('admin')" class="hidden w-full text-left p-4 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-2xl shadow-sm transition-all font-bold flex items-center gap-3 border border-red-100">
-                    <i class="fas fa-tools"></i> Админ-панель
-                </button>
+                <button onclick="showTab('news')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-blue-50 transition"><i class="fas fa-newspaper w-5 text-blue-500"></i> Новости</button>
+                <button onclick="showTab('diary')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-blue-50 transition"><i class="fas fa-book w-5 text-orange-500"></i> Дневник</button>
+                <button onclick="showTab('grades')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-blue-50 transition"><i class="fas fa-award w-5 text-yellow-500"></i> Журнал</button>
+                <button onclick="showTab('tests')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-blue-50 transition"><i class="fas fa-vial w-5 text-purple-500"></i> Тесты</button>
+                <button id="admin-btn" onclick="showTab('admin')" class="hidden w-full text-left p-4 bg-red-50 text-red-600 rounded-2xl font-bold flex items-center gap-3 hover:bg-red-100 transition"><i class="fas fa-tools w-5"></i> Админка</button>
             </aside>
 
             <main class="flex-1">
-                <div id="tab-news" class="tab-view space-y-8"></div>
+                <div id="tab-news" class="tab-view space-y-6">
+                    <h2 class="section-header">События школы</h2>
+                    <div id="news-container" class="grid gap-6"></div>
+                </div>
 
-                <div id="tab-grades" class="tab-view hidden bg-white p-8 rounded-3xl shadow-sm">
-                    <h2 class="text-2xl font-black mb-8 border-b pb-4">Электронный журнал</h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="text-gray-400 text-[11px] uppercase tracking-widest border-b">
-                                    <th class="pb-4 font-bold">Предмет</th>
-                                    <th class="pb-4 font-bold">Оценка</th>
-                                    <th class="pb-4 font-bold">Учитель</th>
-                                    <th class="pb-4 font-bold text-right">Дата</th>
-                                </tr>
-                            </thead>
-                            <tbody id="grades-body" class="divide-y"></tbody>
-                        </table>
+                <div id="tab-grades" class="tab-view hidden">
+                    <h2 class="section-header">Мои Оценки</h2>
+                    <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                        <table class="w-full"><tbody id="grades-body" class="divide-y"></tbody></table>
+                    </div>
+                </div>
+                
+                <div id="tab-diary" class="tab-view hidden">
+                    <h2 class="section-header">Дневник</h2>
+                    <div id="display-schedule" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"></div>
+                    <div class="p-6 bg-white rounded-3xl border-t-8 border-orange-400 shadow-sm">
+                        <h4 class="font-black text-orange-600 mb-2 uppercase text-[10px]">Домашнее задание:</h4>
+                        <div id="display-homework" class="text-slate-700">Загрузка...</div>
                     </div>
                 </div>
 
-                <div id="tab-tests" class="tab-view hidden space-y-6">
-                    <h2 class="text-2xl font-black italic">Доступные тесты</h2>
-                    <div id="tests-list" class="grid grid-cols-1 gap-4"></div>
+                <div id="tab-tests" class="tab-view hidden">
+                    <h2 class="section-header">Доступные Тесты</h2>
+                    <div id="tests-list" class="grid gap-4"></div>
+                    <div id="test-player" class="hidden bg-white p-8 rounded-3xl border shadow-xl"></div>
+                </div>
+
+                <div id="tab-admin" class="tab-view hidden space-y-8 pb-10">
+                    <h2 class="section-header text-red-600 border-red-600">Управление</h2>
                     
-                    <div id="test-player" class="hidden bg-white p-8 rounded-3xl shadow-xl border-t-8 border-purple-600">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 id="player-test-title" class="text-xl font-bold"></h3>
-                        </div>
-                        <div id="player-content"></div>
-                        <button id="next-question-btn" class="mt-8 bg-purple-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg">Далее</button>
-                    </div>
-                </div>
-
-                <div id="tab-shop" class="tab-view hidden">
-                    <h2 class="text-2xl font-black mb-6 italic">Maktab Shop</h2>
-                    <div id="shop-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-                </div>
-
-                <div id="tab-admin" class="tab-view hidden space-y-8">
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border-l-8 border-purple-500">
-                        <h3 class="font-black text-xl mb-6 italic">Контрольная работа / Тест</h3>
-                        <div class="space-y-4">
-                            <input id="test-title" placeholder="Название теста" class="w-full p-4 bg-gray-50 rounded-2xl border-none">
-                            <div id="questions-builder" class="space-y-6"></div>
-                            <button onclick="addQuestionUI()" class="text-purple-600 font-bold text-sm">+ Добавить вопрос</button>
-                            <button id="save-test-btn" class="w-full bg-purple-600 text-white py-4 rounded-2xl font-black">СОЗДАТЬ ТЕСТ</button>
-                        </div>
+                    <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                        <h3 class="font-bold mb-4 italic">Написать новость</h3>
+                        <input id="p-title" placeholder="Заголовок" class="w-full p-3 bg-slate-50 rounded-xl mb-2 outline-none border">
+                        <textarea id="p-text" placeholder="Текст..." class="w-full p-3 bg-slate-50 rounded-xl mb-3 outline-none border"></textarea>
+                        <button id="publish-btn" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Опубликовать</button>
                     </div>
 
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border-l-8 border-green-500">
-                        <h3 class="font-black text-xl mb-6 italic">Выставить баллы вручную</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <select id="g-student-select" class="p-4 bg-gray-50 rounded-2xl font-bold"></select>
-                            <input id="g-subj" placeholder="Предмет" class="p-4 bg-gray-50 rounded-2xl border-none">
-                            <input id="g-val" type="number" placeholder="Баллы" class="p-4 bg-gray-50 rounded-2xl border-none">
-                        </div>
-                        <button id="grade-btn" class="mt-4 bg-green-600 text-white px-10 py-4 rounded-2xl font-black">ВЫСТАВИТЬ</button>
+                    <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                        <h3 class="font-bold mb-4 italic">Редактор Дневника</h3>
+                        <select id="diary-student-select" class="w-full p-3 bg-slate-100 rounded-xl mb-4 border"></select>
+                        <div id="admin-schedule-rows" class="space-y-2 mb-4"></div>
+                        <button onclick="addScheduleRow()" class="text-indigo-600 font-bold mb-4">+ Добавить урок</button>
+                        <textarea id="admin-homework-text" class="w-full p-3 bg-slate-50 rounded-xl mb-4 border" placeholder="Текст ДЗ..."></textarea>
+                        <button id="save-diary-btn" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Сохранить Дневник</button>
                     </div>
 
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border-l-8 border-blue-500">
-                        <h3 class="font-black text-xl mb-6 italic">Создать новость</h3>
-                        <div class="space-y-4">
-                            <input id="p-title" placeholder="Заголовок" class="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none">
-                            <textarea id="p-text" placeholder="Текст..." class="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none" rows="3"></textarea>
-                            <label class="upload-area block">
-                                <p id="file-name" class="text-sm font-bold text-blue-500">Выбрать фото</p>
-                                <input type="file" id="p-file" class="hidden" accept="image/*">
-                            </label>
-                            <button id="publish-btn" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black">ОПУБЛИКОВАТЬ</button>
+                    <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                        <h3 class="font-bold mb-4 italic">Выставление Оценок</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <select id="g-student-select" class="p-3 bg-slate-100 rounded-xl border"></select>
+                            <input id="g-subj" placeholder="Предмет" class="p-3 bg-slate-50 rounded-xl border">
+                            <input id="g-val" type="number" placeholder="Балл" class="p-3 bg-slate-50 rounded-xl border">
                         </div>
+                        <button id="grade-btn" class="w-full mt-3 bg-green-600 text-white py-3 rounded-xl font-bold">Выставить</button>
                     </div>
 
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border-l-8 border-yellow-500">
-                        <h3 class="font-black text-xl mb-6 italic">Новый товар</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                            <input id="item-name" placeholder="Название" class="p-4 bg-gray-50 rounded-2xl border-none">
-                            <input id="item-price" type="number" placeholder="Цена MC" class="p-4 bg-gray-50 rounded-2xl border-none">
-                        </div>
-                        <label class="upload-area block">
-                             <p id="item-file-name" class="text-sm font-bold text-yellow-600">Фото товара</p>
-                             <input type="file" id="item-file" class="hidden" accept="image/*">
-                        </label>
-                        <button id="add-item-btn" class="mt-4 bg-yellow-500 text-white px-10 py-4 rounded-2xl font-black">ДОБАВИТЬ</button>
+                    <div class="bg-white p-6 rounded-3xl border shadow-sm">
+                        <h3 class="font-bold mb-4 italic text-purple-600">Создание Теста</h3>
+                        <input id="test-title" placeholder="Название теста" class="w-full p-3 bg-slate-50 rounded-xl mb-4 border font-bold">
+                        <div id="questions-builder" class="space-y-4 mb-4"></div>
+                        <button onclick="addQuestionUI()" class="text-purple-600 font-bold mb-4 block">+ Добавить вопрос</button>
+                        <button id="save-test-btn" class="w-full bg-purple-600 text-white py-4 rounded-xl font-bold uppercase">Опубликовать тест</button>
                     </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAr4H-obZsEVVR2NOS0Dn700tzq2AnquKY",
-            authDomain: "emaktab-it.firebaseapp.com",
-            databaseURL: "https://emaktab-it-default-rtdb.firebaseio.com",
-            projectId: "emaktab-it",
-            storageBucket: "emaktab-it.firebasestorage.app"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyAr4H-obZsEVVR2NOS0Dn700tzq2AnquKY",
+        authDomain: "emaktab-it.firebaseapp.com",
+        databaseURL: "https://emaktab-it-default-rtdb.firebaseio.com",
+        projectId: "emaktab-it",
+        storageBucket: "emaktab-it.firebasestorage.app"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const storage = getStorage(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-        const users = [
-            {login: 'admin', pass: 'per14sik', role: 'admin', nick: 'Администратор'},
-            {login: 'student', pass: '123', role: 'student', nick: 'Ахад'},
-            {login: 'student2', pass: '123', role: 'student', nick: 'Руфина'},
-            {login: 'student3', pass: '123', role: 'student', nick: 'Эльдар'},
-            {login: 'student4', pass: '123', role: 'student', nick: 'Эрнест'},
-             {login: 'student5', pass: '123', role: 'student', nick: 'Юля'}
-        ];
+    const USERS = [
+        {login: 'admin', pass: 'per14sik', role: 'admin', nick: 'Главный Админ'},
+        {login: 'student', pass: '123', role: 'student', nick: 'Абдуахад'},
+        {login: 'student2', pass: '123', role: 'student', nick: 'Руфина'},
+        {login: 'student3', pass: '123', role: 'student', nick: 'Эльдар'},
+        {login: 'student4', pass: '123', role: 'student', nick: 'Лиля'},
+        {login: 'student5', pass: '123', role: 'student', nick: 'Эрнест'}
+    ];
 
-        window.currentUser = null;
-        let userTotalCoins = 0;
-        let activeTestData = null;
-        let currentQuestionIndex = 0;
-        let studentScore = 0;
-        let maxTestScore = 0;
-        let studentErrors = [];
+    window.currentUser = null;
 
-        // --- AUTH ---
-        window.handleLogin = () => {
-            const u = document.getElementById('log-user').value;
-            const p = document.getElementById('log-pass').value;
-            const found = users.find(user => user.login === u && user.pass === p);
-            if(found) { 
-                window.currentUser = found; 
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('main-app').classList.remove('hidden');
-                document.getElementById('user-display').innerText = found.nick;
-                document.getElementById('role-display').innerText = found.role;
-                if(found.role === 'admin') {
-                    document.getElementById('admin-only-btn').classList.remove('hidden');
-                    document.getElementById('g-student-select').innerHTML = users.filter(x => x.role === 'student').map(x => `<option value="${x.login}">${x.nick}</option>`).join('');
-                }
-                startSync();
-            } else alert("Ошибка входа!");
-        };
+    // Авторизация
+    window.handleLogin = () => {
+        const u = document.getElementById('log-user').value.trim();
+        const p = document.getElementById('log-pass').value.trim();
+        const found = USERS.find(x => x.login === u && x.pass === p);
+        
+        if(found) {
+            window.currentUser = found;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('user-name').innerText = found.nick;
+            document.getElementById('user-role-label').innerText = found.role === 'admin' ? 'Администрация' : 'Ученик';
+            
+            if(found.role === 'admin') {
+                document.getElementById('admin-btn').classList.remove('hidden');
+                const options = USERS.filter(x => x.role === 'student').map(x => `<option value="${x.login}">${x.nick}</option>`).join('');
+                document.getElementById('g-student-select').innerHTML = options;
+                document.getElementById('diary-student-select').innerHTML = options;
+            }
+            startSync();
+        } else {
+            document.getElementById('login-error').classList.remove('hidden');
+        }
+    };
 
-        window.showTab = (tab) => {
-            document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
-            document.getElementById('tab-' + tab).classList.remove('hidden');
-        };
+    window.showTab = (t) => {
+        document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
+        document.getElementById('tab-' + t).classList.remove('hidden');
+    };
 
-        // --- ТЕСТЫ (АДМИН) ---
-        let qCount = 0;
-        window.addQuestionUI = () => {
-            qCount++;
-            const div = document.createElement('div');
-            div.className = "p-4 border rounded-2xl bg-gray-50 space-y-2 relative";
-            div.innerHTML = `
-                <input class="q-text w-full p-2 rounded-lg font-bold" placeholder="Вопрос №${qCount}">
-                <div class="space-y-2">
-                    <div class="flex items-center gap-2"><input type="radio" name="correct_${qCount}" value="0" checked> <input class="q-o w-full p-1 border rounded" placeholder="Вариант 1"></div>
-                    <div class="flex items-center gap-2"><input type="radio" name="correct_${qCount}" value="1"> <input class="q-o w-full p-1 border rounded" placeholder="Вариант 2"></div>
-                    <div class="flex items-center gap-2"><input type="radio" name="correct_${qCount}" value="2"> <input class="q-o w-full p-1 border rounded" placeholder="Вариант 3"></div>
-                    <div class="flex items-center gap-2"><input type="radio" name="correct_${qCount}" value="3"> <input class="q-o w-full p-1 border rounded" placeholder="Вариант 4"></div>
-                </div>
-                <div class="flex justify-between items-center mt-2">
-                    <span class="text-xs text-gray-400 mt-2">* Отметьте точкой правильный ответ</span>
-                    <input type="number" class="q-score w-24 p-2 border rounded-lg" placeholder="Балл">
-                </div>
-            `;
-            document.getElementById('questions-builder').appendChild(div);
-        };
+    // Админ-функции
+    document.getElementById('publish-btn').onclick = () => {
+        const title = document.getElementById('p-title').value;
+        const content = document.getElementById('p-text').value;
+        if(!title) return;
+        push(ref(db, 'posts'), { 
+            title, content, author: currentUser.nick, 
+            date: new Date().toLocaleString('ru-RU', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) 
+        });
+        alert("Опубликовано!");
+        document.getElementById('p-title').value = ""; document.getElementById('p-text').value = "";
+    };
 
-        document.getElementById('save-test-btn').onclick = () => {
-            const title = document.getElementById('test-title').value;
-            const qBlocks = document.querySelectorAll('#questions-builder > div');
-            const questions = [];
-            if(!title) return alert("Введите название теста!");
+    window.addScheduleRow = (d="Понедельник", t="08:00", s="") => {
+        const div = document.createElement('div');
+        div.className = "flex gap-2 items-center bg-slate-50 p-2 rounded-xl border admin-s-row";
+        div.innerHTML = `<select class="r-day p-1 border rounded-lg text-xs"><option>Понедельник</option><option>Вторник</option><option>Среда</option><option>Четверг</option><option>Пятница</option><option>Суббота</option></select><input type="time" class="r-time p-1 border rounded-lg text-xs" value="${t}"><input type="text" class="r-subj p-1 border rounded-lg text-xs flex-1" value="${s}" placeholder="Урок"><button onclick="this.parentElement.remove()" class="text-red-500 font-bold px-2">×</button>`;
+        document.getElementById('admin-schedule-rows').appendChild(div);
+    };
 
-            qBlocks.forEach((b, idx) => {
-                const options = Array.from(b.querySelectorAll('.q-o')).map(i => i.value);
-                const correctIdx = b.querySelector(`input[name="correct_${idx+1}"]:checked`).value;
-                questions.push({
-                    q: b.querySelector('.q-text').value,
-                    options: options,
-                    correct: options[correctIdx],
-                    score: Number(b.querySelector('.q-score').value || 0)
-                });
+    document.getElementById('save-diary-btn').onclick = () => {
+        const student = document.getElementById('diary-student-select').value;
+        const rows = [];
+        document.querySelectorAll('.admin-s-row').forEach(r => {
+            rows.push({ day: r.querySelector('.r-day').value, time: r.querySelector('.r-time').value, subject: r.querySelector('.r-subj').value });
+        });
+        set(ref(db, 'diaries/' + student), { schedule: rows, homework: document.getElementById('admin-homework-text').value });
+        alert("Дневник обновлен!");
+    };
+
+    document.getElementById('grade-btn').onclick = () => {
+        const student = document.getElementById('g-student-select').value;
+        const subj = document.getElementById('g-subj').value;
+        const val = document.getElementById('g-val').value;
+        if(!subj || !val) return;
+        push(ref(db, 'grades'), { student, subject: subj, val: Number(val), date: new Date().toLocaleDateString('ru-RU') });
+        alert("Оценка выставлена!");
+    };
+
+    window.addQuestionUI = () => {
+        const div = document.createElement('div');
+        div.className = "p-4 bg-purple-50 rounded-2xl border q-block mb-4";
+        div.innerHTML = `
+            <input placeholder="Текст вопроса" class="q-txt w-full p-2 mb-2 rounded border font-bold">
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <input placeholder="Вариант 1" class="opt-0 p-2 rounded border text-sm">
+                <input placeholder="Вариант 2" class="opt-1 p-2 rounded border text-sm">
+            </div>
+            <div class="flex gap-2 items-center">
+                <select class="q-corr p-2 border rounded text-xs flex-1">
+                    <option value="0">Верный: Вариант 1</option>
+                    <option value="1">Верный: Вариант 2</option>
+                </select>
+                <input type="number" class="q-points w-20 p-2 border rounded text-xs" value="5">
+            </div>`;
+        document.getElementById('questions-builder').appendChild(div);
+    };
+
+    document.getElementById('save-test-btn').onclick = () => {
+        const title = document.getElementById('test-title').value;
+        const qs = [];
+        document.querySelectorAll('.q-block').forEach(b => {
+            qs.push({
+                text: b.querySelector('.q-txt').value,
+                opts: [b.querySelector('.opt-0').value, b.querySelector('.opt-1').value],
+                correct: Number(b.querySelector('.q-corr').value),
+                points: Number(b.querySelector('.q-points').value)
             });
-            push(ref(db, 'tests'), { title, questions, creator: window.currentUser.nick });
-            alert("Тест успешно сохранен!");
-            document.getElementById('questions-builder').innerHTML = "";
-            document.getElementById('test-title').value = "";
-        };
+        });
+        if(!title || qs.length === 0) return alert("Заполните название и вопросы");
+        push(ref(db, 'tests'), { title, questions: qs, author: currentUser.nick });
+        alert("Тест опубликован!");
+        document.getElementById('test-title').value = ""; document.getElementById('questions-builder').innerHTML = "";
+    };
 
-        // --- ТЕСТЫ (ПЛЕЕР) ---
-        window.startTest = (testId, data) => {
-            activeTestData = data;
-            currentQuestionIndex = 0;
-            studentScore = 0;
-            maxTestScore = data.questions.reduce((a, b) => a + b.score, 0);
-            studentErrors = [];
-            document.getElementById('tests-list').classList.add('hidden');
-            document.getElementById('test-player').classList.remove('hidden');
+    // Синхронизация данных
+    function startSync() {
+        onValue(ref(db, 'posts'), s => {
+            let h = "";
+            s.forEach(p => {
+                const v = p.val();
+                h = `<div class="card p-6 mb-4">
+                        <div class="flex justify-between mb-2 text-[10px] uppercase font-bold text-slate-400"><span>${v.author}</span><span>${v.date}</span></div>
+                        <h3 class="text-xl font-black mb-2">${v.title}</h3>
+                        <p class="text-slate-600">${v.content}</p>
+                    </div>` + h;
+            });
+            document.getElementById('news-container').innerHTML = h || "Нет новостей";
+        });
+
+        onValue(ref(db, 'grades'), s => {
+            let total = 0, h = "";
+            s.forEach(g => {
+                const v = g.val();
+                if(v.student === currentUser.login) {
+                    total += v.val;
+                    h += `<tr class="border-b"><td class="py-4 font-bold">${v.subject}</td><td><span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-black">${v.val}</span></td><td class="text-right text-slate-400 text-[10px]">${v.date}</td></tr>`;
+                }
+            });
+            document.getElementById('user-total-score').innerText = total;
+            document.getElementById('grades-body').innerHTML = h || "Пусто";
+        });
+
+        onValue(ref(db, 'diaries/' + currentUser.login), snap => {
+            const d = snap.val() || { schedule: [], homework: "Нет заданий" };
+            document.getElementById('display-homework').innerText = d.homework;
+            let h = "";
+            ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"].forEach(day => {
+                const list = (d.schedule || []).filter(l => l.day === day);
+                if(list.length > 0) {
+                    h += `<div class="bg-white p-4 rounded-3xl border shadow-sm mb-4"><h4 class="font-black text-blue-600 border-b mb-2 italic">${day}</h4>`;
+                    list.forEach(l => h += `<div class="flex justify-between text-sm py-1 border-b border-dashed last:border-0"><span>${l.time}</span><b>${l.subject}</b></div>`);
+                    h += `</div>`;
+                }
+            });
+            document.getElementById('display-schedule').innerHTML = h || "Расписание не задано";
+        });
+
+        onValue(ref(db, 'tests'), s => {
+            let h = "";
+            s.forEach(t => {
+                const test = t.val();
+                h += `<div class="card p-5 mb-4 flex justify-between items-center">
+                        <span class="font-bold text-slate-700">${test.title}</span>
+                        <button onclick="startTest('${t.key}')" class="bg-purple-600 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-purple-700 transition">Начать</button>
+                      </div>`;
+            });
+            document.getElementById('tests-list').innerHTML = h || "Нет доступных тестов";
+        });
+    }
+
+    // ЛОГИКА ТЕСТА
+    let activeTest = null;
+    let currentIdx = 0;
+    let score = 0;
+
+    window.startTest = async (id) => {
+        const snap = await get(ref(db, 'tests/' + id));
+        if (!snap.exists()) return;
+        
+        activeTest = snap.val();
+        activeTest.id = id;
+        currentIdx = 0;
+        score = 0;
+        
+        document.getElementById('tests-list').classList.add('hidden');
+        document.getElementById('test-player').classList.remove('hidden');
+        renderQuestion();
+    };
+
+    function renderQuestion() {
+        const q = activeTest.questions[currentIdx];
+        const player = document.getElementById('test-player');
+        
+        player.innerHTML = `
+            <div class="mb-4 text-xs font-bold text-purple-400 uppercase">Вопрос ${currentIdx + 1} из ${activeTest.questions.length}</div>
+            <h3 class="text-2xl font-black mb-6 text-slate-800">${q.text} <span class="text-slate-300 text-sm">[${q.points} б.]</span></h3>
+            <div class="grid gap-3">
+                <button onclick="submitAnswer(0)" class="p-4 bg-slate-50 rounded-2xl border-2 border-transparent font-bold text-left hover:border-purple-500 hover:bg-purple-50 transition">${q.opts[0]}</button>
+                <button onclick="submitAnswer(1)" class="p-4 bg-slate-50 rounded-2xl border-2 border-transparent font-bold text-left hover:border-purple-500 hover:bg-purple-50 transition">${q.opts[1]}</button>
+            </div>`;
+    }
+
+    window.submitAnswer = (ansIdx) => {
+        const q = activeTest.questions[currentIdx];
+        if(ansIdx === q.correct) score += Number(q.points);
+        
+        currentIdx++;
+        if(currentIdx < activeTest.questions.length) {
             renderQuestion();
-        };
-
-        let selectedAnswer = "";
-        function renderQuestion() {
-            const q = activeTestData.questions[currentQuestionIndex];
-            document.getElementById('player-test-title').innerText = activeTestData.title;
-            let html = `<p class="text-xl mb-6 font-bold">${currentQuestionIndex + 1}. ${q.q}</p><div class="space-y-3">`;
-            q.options.forEach(opt => {
-                html += `<div class="test-option" onclick="selectOption(this, '${opt.replace(/'/g, "\\'")}')">${opt}</div>`;
-            });
-            html += `</div>`;
-            document.getElementById('player-content').innerHTML = html;
-            selectedAnswer = "";
+        } else {
+            completeTest();
         }
+    };
 
-        window.selectOption = (el, val) => {
-            document.querySelectorAll('.test-option').forEach(x => x.classList.remove('selected'));
-            el.classList.add('selected');
-            selectedAnswer = val;
-        };
-
-        document.getElementById('next-question-btn').onclick = () => {
-            if(!selectedAnswer) return alert("Выберите ответ!");
-            const q = activeTestData.questions[currentQuestionIndex];
-            if(selectedAnswer === q.correct) {
-                studentScore += q.score;
-            } else {
-                studentErrors.push({ question: q.q, yourAnswer: selectedAnswer, correctAnswer: q.correct });
-            }
-            currentQuestionIndex++;
-            if(currentQuestionIndex < activeTestData.questions.length) renderQuestion();
-            else finishTest();
-        };
-
-        function finishTest() {
-            alert(`Тест завершен!\nВаш результат: ${studentScore} из ${maxTestScore}`);
-            // Сохранение оценки в журнал
-            push(ref(db, 'grades'), {
-                student: window.currentUser.login,
-                subject: activeTestData.title,
-                val: studentScore,
-                teacher: "Авто-тест",
-                date: new Date().toLocaleDateString()
-            });
-            // Отчет для учителя
-            push(ref(db, 'test_results'), {
-                studentNick: window.currentUser.nick,
-                studentLogin: window.currentUser.login,
-                testTitle: activeTestData.title,
-                score: studentScore,
-                maxScore: maxTestScore,
-                errors: studentErrors,
-                date: new Date().toLocaleString()
-            });
-            document.getElementById('test-player').classList.add('hidden');
-            document.getElementById('tests-list').classList.remove('hidden');
-        }
-
-        // --- НОВОСТИ И ТОВАРЫ (ИСПРАВЛЕНО) ---
-        document.getElementById('publish-btn').onclick = async () => {
-            const title = document.getElementById('p-title').value;
-            const content = document.getElementById('p-text').value;
-            const file = document.getElementById('p-file').files[0];
-            if(!title || !content) return alert("Заполни данные!");
-            let img = "";
-            if(file) {
-                const s = sRef(storage, 'news/' + Date.now());
-                await uploadBytes(s, file);
-                img = await getDownloadURL(s);
-            }
-            push(ref(db, 'posts'), { title, content, img, author: window.currentUser.nick, date: new Date().toLocaleString() });
-            alert("Опубликовано!");
-        };
-
-        document.getElementById('add-item-btn').onclick = async () => {
-            const name = document.getElementById('item-name').value;
-            const price = document.getElementById('item-price').value;
-            const file = document.getElementById('item-file').files[0];
-            if(!name || !price) return alert("Заполни данные!");
-            let img = "";
-            if(file) {
-                const s = sRef(storage, 'shop/' + Date.now());
-                await uploadBytes(s, file);
-                img = await getDownloadURL(s);
-            }
-            push(ref(db, 'shop'), { name, price: Number(price), img });
-            alert("Товар добавлен!");
-        };
-
-        // --- СИНХРОНИЗАЦИЯ ---
-        function startSync() {
-            onValue(ref(db, 'tests'), snap => {
-                let html = "";
-                const tests = snap.val();
-                for(let id in tests) {
-                    html += `<div class="bg-white p-6 rounded-3xl shadow-sm border flex justify-between items-center">
-                        <div><h4 class="font-black text-lg">${tests[id].title}</h4><p class="text-xs text-gray-400">Вопросов: ${tests[id].questions.length}</p></div>
-                        <button onclick='startTest("${id}", ${JSON.stringify(tests[id])})' class="bg-purple-600 text-white px-6 py-2 rounded-xl font-bold">Начать</button>
-                    </div>`;
-                }
-                document.getElementById('tests-list').innerHTML = html || "Тестов нет";
-            });
-
-            onValue(ref(db, 'posts'), snap => {
-                let html = "";
-                const data = snap.val();
-                for(let id in data) {
-                    const p = data[id];
-                    html = `<div class="post-card">${p.img ? `<img src="${p.img}" class="w-full h-64 object-cover">` : ''}<div class="p-6"><h3 class="text-2xl font-black">${p.title}</h3><p class="text-gray-500 my-4">${p.content}</p><div class="flex justify-between text-xs text-gray-400 border-t pt-4"><span>${p.author}</span><span>${p.date}</span></div></div></div>` + html;
-                }
-                document.getElementById('tab-news').innerHTML = html || "Новостей нет";
-            });
-
-            onValue(ref(db, 'grades'), snap => {
-                const gradesData = snap.val();
-                onValue(ref(db, 'orders'), orderSnap => {
-                    const ordersData = orderSnap.val();
-                    let earned = 0, spent = 0, tableHtml = "";
-                    for(let id in gradesData) {
-                        const g = gradesData[id];
-                        if(g.student === window.currentUser.login) earned += Number(g.val);
-                        if(window.currentUser.role === 'admin' || g.student === window.currentUser.login) {
-                            tableHtml += `<tr class="border-b"><td class="p-4 font-bold">${g.subject}</td><td class="p-4"><span class="bg-blue-600 text-white px-3 py-1 rounded-lg">${g.val}</span></td><td class="p-4 text-sm">${g.teacher}</td><td class="p-4 text-right text-gray-400">${g.date}</td></tr>`;
-                        }
-                    }
-                    for(let id in ordersData) if(ordersData[id].studentLogin === window.currentUser.login) spent += Number(ordersData[id].price);
-                    userTotalCoins = earned - spent;
-                    document.getElementById('user-coins').innerText = userTotalCoins;
-                    document.getElementById('grades-body').innerHTML = tableHtml;
-                });
-            });
-
-            onValue(ref(db, 'shop'), snap => {
-                let html = "";
-                const items = snap.val();
-                for(let id in items) {
-                    const it = items[id];
-                    html += `<div class="bg-white p-4 rounded-3xl shadow-sm border text-center flex flex-col items-center"><img src="${it.img || ''}" class="h-32 object-contain mb-4"><h4 class="font-black">${it.name}</h4><div class="coin-badge my-2">${it.price} MC</div><button onclick="buyItem('${id}', '${it.name}', ${it.price})" class="w-full bg-blue-600 text-white py-2 rounded-xl font-bold">Купить</button></div>`;
-                }
-                document.getElementById('shop-container').innerHTML = html || "Магазин пуст";
-            });
-        }
-
-        document.getElementById('grade-btn').onclick = () => {
-            const student = document.getElementById('g-student-select').value;
-            const subject = document.getElementById('g-subj').value;
-            const val = document.getElementById('g-val').value;
-            push(ref(db, 'grades'), { student, subject, val: Number(val), teacher: window.currentUser.nick, date: new Date().toLocaleDateString() });
-            alert("Баллы начислены!");
-        };
-
-        window.buyItem = (id, name, price) => {
-            if(userTotalCoins < price) return alert("Недостаточно MC!");
-            if(confirm(`Купить "${name}"?`)) {
-                push(ref(db, 'orders'), { itemName: name, price: Number(price), studentName: window.currentUser.nick, studentLogin: window.currentUser.login, date: new Date().toLocaleString() });
-                alert("Успешно!");
-            }
-        };
-
-        document.getElementById('p-file').onchange = e => document.getElementById('file-name').innerText = e.target.files[0].name;
-        document.getElementById('item-file').onchange = e => document.getElementById('item-file-name').innerText = e.target.files[0].name;
-
-    </script>
+    function completeTest() {
+        // Сохраняем результат в оценки
+        push(ref(db, 'grades'), { 
+            student: currentUser.login, 
+            subject: "Тест: " + activeTest.title, 
+            val: score, 
+            date: new Date().toLocaleDateString('ru-RU') 
+        });
+        
+        const player = document.getElementById('test-player');
+        player.innerHTML = `
+            <div class="text-center py-6">
+                <div class="text-5xl mb-4">🎉</div>
+                <h2 class="text-2xl font-black mb-2 text-slate-800">Тест завершен!</h2>
+                <p class="mb-6 text-slate-500">Ваш результат: <span class="text-purple-600 font-bold">${score} баллов</span></p>
+                <button onclick="location.reload()" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold uppercase tracking-wider">Вернуться назад</button>
+            </div>`;
+    }
+</script>
 </body>
 </html>
-
-
-

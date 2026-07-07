@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         .hidden { display: none !important; }
         .tab-view { animation: slideUp 0.4s ease-out; }
@@ -105,11 +106,32 @@
             font-size: 16px;
             font-weight: 800;
         }
+
+        #sms-push-banner { position: fixed; top: 24px; right: 24px; z-index: 99999; animation: slideInRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-width: 380px; width: 100%; }
+        @keyframes slideInRight { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .red-badge-dot { background-color: #ef4444; color: white; font-size: 11px; font-weight: 900; border-radius: 9999px; padding: 2px 7px; min-width: 20px; text-align: center; margin-left: auto; display: inline-block; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
 
-    <!-- ГЛОБАЛЬНОЕ ОКНО ИНФОРМАЦИИ О СКАНИРОВАНИИ QR ДЛЯ ЛЮБОГО СМАРТФОНА -->
+    <div id="sms-push-banner" class="hidden bg-white/95 border-l-8 border-blue-600 rounded-3xl p-5 shadow-2xl backdrop-blur-md flex items-start gap-4">
+        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-inner flex-shrink-0"><i class="fas fa-comment-alt"></i></div>
+        <div class="flex-1">
+            <h5 class="font-black text-[11px] uppercase tracking-widest text-slate-400">Всплывающее СМС-Уведомление</h5>
+            <p id="sms-push-text" class="text-sm font-extrabold text-slate-800 mt-1 leading-snug">Пришло новое уведомление!</p>
+        </div>
+        <button onclick="document.getElementById('sms-push-banner').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 transition"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div id="sub-lock-modal" class="hidden fixed inset-0 bg-black/60 z-[99999] backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-[36px] p-8 max-w-sm w-full text-center border shadow-2xl relative animate-slideUp">
+            <div class="w-20 h-20 bg-amber-100 text-amber-600 text-3xl rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner"><i class="fas fa-crown"></i></div>
+            <div class="text-2xl font-black text-slate-800 uppercase italic">Требуется Подписка PRO!</div>
+            <p class="text-xs text-slate-500 font-bold my-4 leading-relaxed">Извините, но разделы Рейтинг, Тесты и Маркет заблокированы. Купите подписку PRO у учителя, чтобы продолжить пользоваться этими функциями.</p>
+            <button onclick="document.getElementById('sub-lock-modal').classList.add('hidden')" class="w-full btn-primary bg-amber-500 hover:bg-amber-600 text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20">Закрыть окно</button>
+        </div>
+    </div>
+
     <div id="qr-info-modal" class="hidden fixed inset-0 bg-black/60 z-[9999] backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-[32px] p-8 max-w-md w-full border shadow-2xl relative animate-slideUp">
             <button onclick="document.getElementById('qr-info-modal').classList.add('hidden')" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 text-xl"><i class="fas fa-times"></i></button>
@@ -119,7 +141,7 @@
                 <p class="text-xs text-slate-400 font-mono mt-1" id="modal-order-id">ID: ----</p>
             </div>
             <div class="space-y-3 border-y py-4 my-4 text-sm font-medium text-slate-600" id="modal-order-details">
-                <p class="italic text-slate-400 text-center">Загрузка данных из Firebase...</p>
+                <p class="italic text-slate-400 text-center">Загрузка данных...</p>
             </div>
             <button onclick="document.getElementById('qr-info-modal').classList.add('hidden')" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl text-sm uppercase">Закрыть окно</button>
         </div>
@@ -146,10 +168,14 @@
                 </div>
 
                 <div class="flex items-center gap-4">
+                    <img id="profile-avatar-img" src="https://ui-avatars.com/api/?name=User&background=random" class="w-10 h-10 rounded-full object-cover border-2 border-blue-500 hidden sm:block">
+                    
                     <div class="text-right">
-                        <p id="user-name" class="font-bold text-sm"></p>
+                        <p class="font-bold text-sm"><span id="user-name"></span> <span id="user-emoji-badge"></span></p>
                         <p id="user-role-label" class="text-[10px] text-slate-400 font-black uppercase"></p>
+                        <p id="user-sub-tier" class="text-[9px] font-black tracking-wider text-slate-400 uppercase mt-0.5">Free</p>
                     </div>
+                    
                     <div class="flex items-center gap-2 bg-yellow-100 px-4 py-2 rounded-2xl text-yellow-700 font-black">
                         <i class="fas fa-star"></i> <span id="user-total-score">0</span>
                     </div>
@@ -160,13 +186,35 @@
 
         <div class="container mx-auto flex flex-col md:flex-row p-6 gap-8">
             <aside class="w-full md:w-64 space-y-2">
-                <button onclick="showTab('news')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-blue-50"><i class="fas fa-newspaper text-blue-500"></i> <span class="data-i18n" data-key="menuNews">Новости</span></button>
-                <button onclick="showTab('diary')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-orange-50"><i class="fas fa-book text-orange-500"></i> <span class="data-i18n" data-key="menuDiary">Дневник</span></button>
-                <button onclick="showTab('grades')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-yellow-50"><i class="fas fa-award text-yellow-500"></i> <span class="data-i18n" data-key="menuGrades">Оценки</span></button>
-                <button onclick="showTab('rating')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-cyan-50"><i class="fas fa-trophy text-cyan-500"></i> <span class="data-i18n" data-key="menuRating">Рейтинг</span></button>
-                <button onclick="showTab('tests')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-purple-50"><i class="fas fa-vial text-purple-500"></i> <span class="data-i18n" data-key="menuTests">Тесты</span></button>
-                <button onclick="showTab('shop')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-green-50"><i class="fas fa-shopping-cart text-green-500"></i> <span class="data-i18n" data-key="menuMarket">Маркет</span></button>
-                <button onclick="showTab('chat')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-teal-50"><i class="fas fa-comments text-teal-500"></i> <span id="chat-tab-title">Чат с учителем</span></button>
+                <button onclick="showTab('news')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-blue-50">
+                    <i class="fas fa-newspaper text-blue-500"></i> <span class="data-i18n" data-key="menuNews">Новости</span>
+                    <span id="badge-news" class="red-badge-dot hidden">0</span>
+                </button>
+                <button onclick="showTab('diary')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-orange-50">
+                    <i class="fas fa-book text-orange-500"></i> <span class="data-i18n" data-key="menuDiary">Дневник</span>
+                    <span id="badge-diary" class="red-badge-dot hidden">0</span>
+                </button>
+                <button onclick="showTab('grades')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-yellow-50">
+                    <i class="fas fa-award text-yellow-500"></i> <span class="data-i18n" data-key="menuGrades">Оценки</span>
+                    <span id="badge-grades" class="red-badge-dot hidden">0</span>
+                </button>
+                <button onclick="showTab('rating')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-cyan-50">
+                    <i class="fas fa-trophy text-cyan-500"></i> <span class="data-i18n" data-key="menuRating">Рейтинг</span>
+                </button>
+                <button onclick="showTab('tests')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-purple-50">
+                    <i class="fas fa-vial text-purple-500"></i> <span class="data-i18n" data-key="menuTests">Тесты</span>
+                </button>
+                <button onclick="showTab('shop')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-green-50">
+                    <i class="fas fa-shopping-cart text-green-500"></i> <span class="data-i18n" data-key="menuMarket">Маркет</span>
+                    <span id="badge-shop" class="red-badge-dot hidden">0</span>
+                </button>
+                <button onclick="showTab('chat')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-teal-50">
+                    <i class="fas fa-comments text-teal-500"></i> <span id="chat-tab-title">Чат с учителем</span>
+                    <span id="badge-chat" class="red-badge-dot hidden">0</span>
+                </button>
+                <button onclick="showTab('profile')" class="w-full text-left p-4 bg-white rounded-2xl font-bold flex items-center gap-3 hover:bg-slate-100">
+                    <i class="fas fa-user-cog text-slate-600"></i> <span>Профиль</span>
+                </button>
                 <button id="admin-btn" onclick="showTab('admin')" class="hidden w-full text-left p-4 bg-red-50 text-red-600 rounded-2xl font-bold flex items-center gap-3 hover:bg-red-100"><i class="fas fa-tools"></i> <span class="data-i18n" data-key="menuAdmin">Админка</span></button>
             </aside>
 
@@ -217,17 +265,48 @@
                     </div>
                 </div>
 
-                <!-- ВКЛАДКА ЧАТА (РАЗДЕЛЬНЫЕ ПРИВАТНЫЕ ЧАТЫ) -->
+                <div id="tab-profile" class="tab-view hidden space-y-6">
+                    <h2 class="section-header text-slate-700">Настройки Профиля</h2>
+                    <div class="bg-white p-6 rounded-3xl border shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <h3 class="font-black text-sm text-blue-600 uppercase">Оформление аккаунта</h3>
+                            <div>
+                                <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Ссылка на аватарку (URL):</label>
+                                <input id="profile-avatar-input" type="text" placeholder="Оставьте пустым для дефолтной User" class="w-full p-3 bg-slate-50 border rounded-xl outline-none text-sm font-bold">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Эмодзи Статуса (Только для PRO):</label>
+                                <select id="profile-emoji-input" class="w-full p-3 bg-slate-50 border rounded-xl outline-none text-sm font-bold">
+                                    <option value="">Без эмодзи</option>
+                                    <option value="📚">📚 Академик</option>
+                                    <option value="💻">💻 Техно-Гений</option>
+                                    <option value="✨">✨badge Суперзвезда</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <h3 class="font-black text-sm text-blue-600 uppercase">Личные Данные и Безопасность</h3>
+                            <div>
+                                <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Отображаемое Имя (ФИО):</label>
+                                <input id="profile-nick-input" type="text" placeholder="Имя" class="w-full p-3 bg-slate-50 border rounded-xl outline-none text-sm font-bold">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Новый пароль аккаунта:</label>
+                                <input id="profile-pass-input" type="password" placeholder="Пароль" class="w-full p-3 bg-slate-50 border rounded-xl outline-none text-sm font-bold">
+                            </div>
+                        </div>
+                        <button onclick="window.saveStudentProfileData()" class="md:col-span-2 w-full bg-blue-600 text-white font-black py-4 rounded-xl text-sm uppercase tracking-wider shadow-lg hover:bg-blue-700 transition">Сохранить изменения профиля</button>
+                    </div>
+                </div>
+
                 <div id="tab-chat" class="tab-view hidden flex flex-col md:flex-row h-[600px] bg-white rounded-3xl border shadow-sm overflow-hidden">
-                    <!-- Боковая панель выбора чатов для учителя -->
                     <div id="admin-chat-sidebar" class="hidden w-full md:w-64 bg-slate-100 border-r flex flex-col">
                         <div class="p-4 bg-slate-200 font-black text-xs uppercase text-slate-500 tracking-wider">Диалоги учеников</div>
                         <div id="admin-chat-list" class="flex-1 overflow-y-auto divide-y divide-slate-200">
-                            <p class="text-xs p-4 italic text-slate-400 text-center">Нет активных обращений</p>
+                            <p class="text-xs p-4 italic text-slate-400 text-center">Нет active обращений</p>
                         </div>
                     </div>
 
-                    <!-- Основное окно чата -->
                     <div class="flex-1 flex flex-col h-full bg-white">
                         <div id="chat-header-node" class="bg-teal-600 p-4 text-white font-bold flex items-center gap-2">
                             <i class="fas fa-comments"></i> <span id="chat-window-title">Чат поддержки</span>
@@ -245,6 +324,24 @@
 
                 <div id="tab-admin" class="tab-view hidden space-y-8 pb-10">
                     <h2 class="section-header text-red-600 data-i18n" data-key="headerAdmin">Панель Управления</h2>
+
+                    <div class="bg-white p-6 rounded-3xl border shadow-sm space-y-4">
+                        <h3 class="font-bold text-red-600 uppercase text-xs">Управление аккаунтами учеников, баны и подписки (PRO)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs font-bold border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-400 uppercase border-b">
+                                        <th class="p-3">Логин / Данные ученика</th>
+                                        <th class="p-3">Пароль в бд</th>
+                                        <th class="p-3">Доступ PRO</th>
+                                        <th class="p-3">Состояние</th>
+                                        <th class="p-3 text-right">Управление</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-students-ban-list" class="divide-y text-slate-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
 
                     <div class="bg-white p-6 rounded-3xl border-4 border-dashed border-green-400 shadow-sm space-y-4">
                         <h3 class="font-black text-green-600 uppercase text-sm"><i class="fas fa-qrcode mr-2"></i>Сканирование QR-кода выдачи заказа</h3>
@@ -277,7 +374,7 @@
                         </div>
                         
                         <div class="border-t pt-4">
-                            <h4 class="text-xs font-black text-slate-400 uppercase mb-2">Управление текущими товарами (Редактирование / Удаление / Наличие):</h4>
+                            <h4 class="text-xs font-black text-slate-400 uppercase mb-2">Управление текущими товарами:</h4>
                             <div id="admin-shop-status-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
                         </div>
                     </div>
@@ -377,6 +474,15 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+
+    emailjs.init("YOUR_PUBLIC_KEY");
+
+    function sendRealSmsEmail(message) {
+        const templateParams = { message_text: message, to_email: "student_mailbox@mail.ru" };
+        emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
+            .then(() => console.log('Уведомление отправлено!'))
+            .catch((err) => console.log('Ошибка шлюза EmailJS:', err));
+    }
 
     const LANGS = {
         ru: {
@@ -479,9 +585,30 @@
     let editShopItemKey = null;
     let html5QrcodeScanner = null;
     
-    // Переменная для отслеживания выбранного чата у учителя
     window.activeChatStudentLogin = null;
     let chatListenerUnsubscribe = null;
+
+    const activeBadges = { news: 0, diary: 0, grades: 0, shop: 0, chat: 0 };
+    let blockNotificationTriggers = true;
+
+    function showSmsNotification(msg, category) {
+        document.getElementById('sms-push-text').innerText = msg;
+        document.getElementById('sms-push-banner').classList.remove('hidden');
+        
+        if(category && activeBadges[category] !== undefined) {
+            activeBadges[category]++;
+            const bNode = document.getElementById(`badge-${category}`);
+            if(bNode) {
+                bNode.innerText = activeBadges[category];
+                bNode.classList.remove('hidden');
+            }
+        }
+        sendRealSmsEmail(msg);
+        
+        setTimeout(() => {
+            document.getElementById('sms-push-banner').classList.add('hidden');
+        }, 5000);
+    }
 
     window.handleLogin = (predefinedUser = null) => {
         let user = predefinedUser;
@@ -498,6 +625,35 @@
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('main-app').classList.remove('hidden');
 
+            onValue(ref(db, `bans/${user.login}`), banSnap => {
+                if(banSnap.exists()) {
+                    const banInfo = banSnap.val();
+                    if(banInfo.banned && (banInfo.type === 'perm' || banInfo.expires > Date.now())) {
+                        alert(`Ваш аккаунт заблокирован администратором!\nПричина: ${banInfo.reason}`);
+                        window.handleLogout();
+                    }
+                }
+            });
+
+            onValue(ref(db, `custom_profiles/${user.login}`), (pSnap) => {
+                const pData = pSnap.val() || { subscription: 'Free', avatar: '', emoji: '', nick: user.nick, pass: user.pass };
+                
+                window.currentUser.subscription = pData.subscription || 'Free';
+                window.currentUser.nick = pData.nick || user.nick;
+                window.currentUser.pass = pData.pass || user.pass;
+
+                document.getElementById('user-sub-tier').innerText = pData.subscription === 'premium' ? 'PRO' : 'Free';
+                document.getElementById('user-sub-tier').className = pData.subscription === 'premium' ? "text-[9px] font-black tracking-wider text-amber-500 uppercase mt-0.5" : "text-[9px] font-black tracking-wider text-slate-400 uppercase mt-0.5";
+                document.getElementById('user-emoji-badge').innerText = pData.emoji ? (pData.emoji === 'PRO' ? '🏆 PRO' : pData.emoji) : '';
+                
+                document.getElementById('profile-avatar-img').src = pData.avatar || `https://ui-avatars.com/api/?name=User&background=random`;
+
+                document.getElementById('profile-avatar-input').value = pData.avatar || "";
+                document.getElementById('profile-emoji-input').value = pData.emoji || "";
+                document.getElementById('profile-nick-input').value = window.currentUser.nick;
+                document.getElementById('profile-pass-input').value = window.currentUser.pass;
+            });
+
             onValue(ref(db, 'user_classes'), (snapshot) => {
                 const dbClasses = snapshot.val() || {};
                 USERS.forEach(usr => {
@@ -506,7 +662,7 @@
                     }
                 });
 
-                document.getElementById('user-name').innerText = user.nick;
+                document.getElementById('user-name').innerText = window.currentUser.nick;
                 const currentNoClass = LANGS[window.currentLang].noClass;
                 document.getElementById('user-role-label').innerText = user.role === 'admin' ? LANGS[window.currentLang].roleAdmin : `${LANGS[window.currentLang].roleStudent} (${user.class || currentNoClass})`;
                 if(user.role === 'student') {
@@ -515,21 +671,20 @@
 
                 if(user.role === 'admin') {
                     document.getElementById('admin-btn').classList.remove('hidden');
-                    const opt = USERS.filter(x => x.role === 'student').map(x => `<option value="${x.login}">${x.nick} (${x.class || currentNoClass})</option>`).join('');
+                    const opt = USERS.filter(x => x.role === 'student').map(x => `<option value="${x.login}">${x.nick}</option>`).join('');
                     document.getElementById('diary-target-student').innerHTML = opt;
                     document.getElementById('grade-student').innerHTML = opt;
                     document.getElementById('manage-class-student').innerHTML = opt;
                     window.updateClassInputLabel();
                     window.loadStudentDiaryAdmin();
                     
-                    // Показываем сайдбар переписок для учителя
                     document.getElementById('admin-chat-sidebar').classList.remove('hidden');
                     document.getElementById('chat-tab-title').innerText = "Диалоги (" + LANGS[window.currentLang].roleAdmin + ")";
                     startAdminChatSidebarSync();
+                    syncAdminStudentsManagementList();
                 } else {
                     document.getElementById('admin-chat-sidebar').classList.add('hidden');
                     document.getElementById('chat-tab-title').innerText = "Чат с учителем";
-                    // Для ученика чат всегда привязан к его логину
                     window.activeChatStudentLogin = user.login;
                     startChatMessagesSync(user.login);
                 }
@@ -543,14 +698,128 @@
         }
     };
 
+    window.saveStudentProfileData = () => {
+        const avatarUrl = document.getElementById('profile-avatar-input').value.trim();
+        let selectedEmoji = document.getElementById('profile-emoji-input').value;
+        const inputNick = document.getElementById('profile-nick-input').value.trim();
+        const inputPass = document.getElementById('profile-pass-input').value.trim();
+
+        if(!inputNick || !inputPass) return alert("Поля имени и пароля обязательны к заполнению!");
+        
+        if(window.currentUser.subscription !== 'premium' && selectedEmoji !== "") {
+            alert("Кастомные эмодзи статуса доступны только для PRO аккаунтов!");
+            selectedEmoji = "";
+            document.getElementById('profile-emoji-input').value = "";
+        }
+
+        update(ref(db, `custom_profiles/${window.currentUser.login}`), {
+            avatar: avatarUrl,
+            emoji: selectedEmoji,
+            nick: inputNick,
+            pass: inputPass,
+            subscription: window.currentUser.subscription || 'Free'
+        }).then(() => {
+            alert("Данные профиля успешно сохранены!");
+            location.reload();
+        });
+    };
+
     window.handleLogout = () => {
         localStorage.removeItem('maktab_pro_session');
         location.reload();
     };
 
     window.showTab = (t) => {
+        if(window.currentUser && window.currentUser.role === 'student') {
+            if(t === 'rating' || t === 'tests' || t === 'shop') {
+                if(!window.currentUser.subscription || window.currentUser.subscription === 'Free') {
+                    document.getElementById('sub-lock-modal').classList.remove('hidden');
+                    return;
+                }
+            }
+        }
+
         document.querySelectorAll('.tab-view').forEach(v => v.classList.add('hidden'));
         document.getElementById('tab-' + t).classList.remove('hidden');
+
+        if(activeBadges[t] !== undefined) {
+            activeBadges[t] = 0;
+            const bNode = document.getElementById(`badge-${t}`);
+            if(bNode) bNode.classList.add('hidden');
+        }
+    };
+
+    function syncAdminStudentsManagementList() {
+        onValue(ref(db), snap => {
+            const root = snap.val() || {};
+            const bans = root.bans || {};
+            const profiles = root.custom_profiles || {};
+            
+            let html = "";
+            USERS.filter(x => x.role === 'student').forEach(u => {
+                const bInfo = bans[u.login] || { banned: false };
+                const pInfo = profiles[u.login] || { subscription: 'Free', pass: u.pass, nick: u.nick };
+                
+                const isCurrentlyBanned = bInfo.banned && (bInfo.type === 'perm' || bInfo.expires > Date.now());
+                const banStatusText = isCurrentlyBanned ? `<span class="text-red-500 font-extrabold">🚫 ЗАБАНЕН</span>` : `<span class="text-green-500 font-extrabold">✅ Активен</span>`;
+                
+                html += `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-3 border-b border-slate-100">
+                        <p class="text-slate-900 font-black">${pInfo.nick || u.nick}</p>
+                        <p class="text-[10px] text-slate-400 font-mono">${u.login}</p>
+                    </td>
+                    <td class="p-3 border-b border-slate-100 font-mono text-red-600 font-black">${pInfo.pass || u.pass}</td>
+                    <td class="p-3 border-b border-slate-100">
+                        <select onchange="window.adminChangeSubscription('${u.login}', this.value)" class="p-1.5 bg-white border rounded-xl outline-none text-xs font-bold">
+                            <option value="Free" ${pInfo.subscription !== 'premium' ? 'selected' : ''}>Free</option>
+                            <option value="premium" ${pInfo.subscription === 'premium' ? 'selected' : ''}>PRO</option>
+                        </select>
+                    </td>
+                    <td class="p-3 border-b border-slate-100">${banStatusText}</td>
+                    <td class="p-3 border-b border-slate-100 text-right space-x-1">
+                        ${isCurrentlyBanned ? `
+                            <button onclick="window.adminUnbanUser('${u.login}')" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2.5 rounded-lg text-[10px] uppercase">Разбанить</button>
+                        ` : `
+                            <button onclick="window.adminBanUser('${u.login}', 'perm')" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2.5 rounded-lg text-[10px] uppercase">Навсегда</button>
+                            <button onclick="window.adminBanUser('${u.login}', 'temp')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-1 px-2.5 rounded-lg text-[10px] uppercase">На время</button>
+                        `}
+                    </td>
+                </tr>`;
+            });
+            document.getElementById('admin-students-ban-list').innerHTML = html;
+        });
+    }
+
+    window.adminChangeSubscription = (studentLogin, newSubValue) => {
+        update(ref(db, `custom_profiles/${studentLogin}`), { subscription: newSubValue }).then(() => {
+            alert("Статус подписки ученика изменен!");
+            syncAdminStudentsManagementList();
+        });
+    };
+
+    window.adminBanUser = (studentLogin, banType) => {
+        const reason = prompt("Укажите причину блокировки аккаунта:");
+        if(!reason || reason.trim() === "") return alert("Вы должны обязательно указать причину бана!");
+        
+        let expiresTimestamp = 0;
+        if(banType === 'temp') {
+            const timeStr = prompt("Введите время бана аккаунта в минутах (например: 10 или 60):");
+            const mins = parseInt(timeStr);
+            if(isNaN(mins) || mins <= 0) return alert("Некорректное время!");
+            expiresTimestamp = Date.now() + (mins * 60 * 1000);
+        }
+
+        set(ref(db, `bans/${studentLogin}`), {
+            banned: true,
+            type: banType,
+            reason: reason.trim(),
+            expires: expiresTimestamp
+        });
+    };
+
+    window.adminUnbanUser = (studentLogin) => {
+        remove(ref(db, `bans/${studentLogin}`));
     };
 
     function getGradeClass(val, forcedColor) {
@@ -620,6 +889,10 @@
                 h = `<div class="card p-6 border-l-4 border-blue-500 mb-2"><b>${v.title}</b><p class="text-sm text-slate-600">${v.text}</p></div>` + h;
             });
             document.getElementById('news-container').innerHTML = h || LANGS[window.currentLang].noTasks;
+            
+            if(!blockNotificationTriggers && window.currentUser && window.currentUser.role === 'student') {
+                showSmsNotification("Вышла новая новость в Школьной Ленте!", "news");
+            }
         });
 
         onValue(ref(db, 'results'), s => {
@@ -650,6 +923,10 @@
             });
             document.getElementById('grades-grid').innerHTML = h || LANGS[window.currentLang].noGrades;
             renderRatingsSystem();
+
+            if(!blockNotificationTriggers && window.currentUser && window.currentUser.role === 'student') {
+                showSmsNotification("Пришла новая оценка в ваш Журнал Оценок!", "grades");
+            }
         });
 
         onValue(ref(db, 'tests'), st => {
@@ -666,7 +943,6 @@
             });
         });
 
-        // СИНХРОНИЗАЦИЯ МАРКЕТА
         onValue(ref(db, 'shop_items'), s => {
             let h = "";
             let adminStatusHtml = "";
@@ -698,7 +974,7 @@
                     <div class="flex justify-between items-center mt-4">
                         <span class="text-green-600 font-black">${v.price} ⭐</span>
                         ${isAvailable 
-                            ? `<button onclick="window.buyItem('${x.key}', ${v.price}, '${v.title}')" class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-xs">${LANGS[window.currentLang].buyBtn}</button>`
+                            ? `<button onclick="window.buyItem('${x.key}', ${v.price}, '${v.title}', '${v.desc || ''}')" class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-xs">${LANGS[window.currentLang].buyBtn}</button>`
                             : `<span class="text-red-500 font-bold text-xs">${LANGS[window.currentLang].noStock}</span>`
                         }
                     </div>
@@ -725,9 +1001,13 @@
             });
             document.getElementById('shop-items').innerHTML = h || LANGS[window.currentLang].noMarket;
             document.getElementById('admin-shop-status-list').innerHTML = adminStatusHtml;
+
+            if(!blockNotificationTriggers && window.currentUser && window.currentUser.role === 'student') {
+                showSmsNotification("Вышел новый товар в Школьном Магазине!", "shop");
+            }
         });
 
-        // СИНХРОНИЗАЦИЯ ЗАКАЗОВ (QR ТЕПЕРЬ ХРАНИТ ОБЫЧНЫЙ ТЕКСТ)
+        // СИНХРОНИЗАЦИЯ ЗАКАЗОВ С СЕРИАЛИЗАЦИЕЙ СТРУКТУРИРОВАННОГО ТЕКСТА В QR-КОД
         onValue(ref(db, 'shop_orders'), s => {
             let studentOrdersHtml = "";
             let adminOrdersHtml = "";
@@ -770,7 +1050,7 @@
 
                         ${showRating ? `
                             <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-200 flex flex-col gap-2">
-                                <p class="text-xs text-yellow-800 font-black">Оцените качество товара (Брак / Плохое качество):</p>
+                                <p class="text-xs text-yellow-800 font-black">Оцените качество товара:</p>
                                 <div class="flex gap-2">
                                     ${[1, 2, 3, 4, 5].map(stars => `
                                         <button onclick="window.rateShopItem('${key}', '${order.itemKey}', ${stars})" class="bg-white hover:bg-yellow-400 border px-3 py-1 rounded-lg text-sm transition">★ ${stars}</button>
@@ -781,7 +1061,7 @@
 
                         ${canCancel ? `
                             <button onclick="window.cancelOrderByStudent('${key}', ${order.price})" class="w-full bg-red-100 text-red-600 py-2 rounded-xl text-xs font-black hover:bg-red-200 transition">
-                                ОТМЕНИТЬ ЗАКАЗ С УКАЗАНИЕМ ПРИЧИНЫ
+                                ОТМЕНИТЬ ЗАКАЗ
                             </button>
                         ` : ''}
                     </div>` + studentOrdersHtml;
@@ -790,8 +1070,25 @@
                         setTimeout(() => {
                             const qrBox = document.getElementById(`qr-container-${key}`);
                             if(qrBox && !qrBox.innerHTML.trim()) {
-                                // ГЕНЕРИРУЕМ ОБЫЧНЫЙ ТЕКСТ (ТОЛЬКО ID ЗАКАЗА)
-                                new QRCode(qrBox, { text: key, width: 140, height: 140 });
+                                const dateOrdered = order.time ? new Date(order.time).toLocaleString('ru-RU') : 'Неизвестно';
+                                const dateArrived = order.arrivalCalDate ? order.arrivalCalDate : new Date().toLocaleString('ru-RU');
+                                
+                                const plainTextPayload = `КОД ЗАКАЗА: ${key}\n` +
+                                                         `ПОКУПАТЕЛЬ: ${order.studentNick}\n` +
+                                                         `ТОВАР: ${order.itemTitle}\n` +
+                                                         `СТОИМОСТЬ: ${order.price} звёзд\n` +
+                                                         `ДАТА ЗАКАЗА: ${dateOrdered}\n` +
+                                                         `ДАТА ПРИБЫТИЯ: ${dateArrived}`;
+
+                                // Фикс падения кириллицы в qrcode.js
+                                const safeText = unescape(encodeURIComponent(plainTextPayload));
+
+                                new QRCode(qrBox, { 
+                                    text: safeText, 
+                                    width: 150, 
+                                    height: 150,
+                                    correctLevel: QRCode.CorrectLevel.H
+                                });
                             }
                         }, 200);
                     }
@@ -813,10 +1110,10 @@
                         <div class="flex flex-wrap gap-1.5 border-t pt-2.5">
                             <button onclick="window.setOrderStatus('${key}', 'shipping')" class="bg-orange-400 text-white px-2.5 py-1.5 rounded-lg hover:bg-orange-500">Доставляется</button>
                             <button onclick="window.setOrderStatus('${key}', 'packing')" class="bg-yellow-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-yellow-600">Собирается</button>
-                            <button onclick="window.setOrderStatus('${key}', 'ready')" class="bg-green-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-green-700">Можно забирать</button>
+                            <button onclick="window.setOrderStatusAdminReady('${key}')" class="bg-green-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-green-700">Можно забирать</button>
                             <button onclick="window.setOrderStatus('${key}', 'completed')" class="bg-slate-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-700">Выдан</button>
-                            <button onclick="window.returnOrderAdmin('${key}', ${order.price})" class="bg-purple-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-purple-700">Возврат в пункте выдачи</button>
-                            <button onclick="window.cancelOrderAdmin('${key}', ${order.price})" class="bg-red-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-red-700">Отмена админом</button>
+                            <button onclick="window.returnOrderAdmin('${key}', ${order.price})" class="bg-purple-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-purple-700">Возврат</button>
+                            <button onclick="window.cancelOrderAdmin('${key}', ${order.price})" class="bg-red-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-red-700">Отмена</button>
                         </div>
                     ` : ''}
                 </div>` + adminOrdersHtml;
@@ -853,18 +1150,26 @@
             });
             document.getElementById('display-schedule').innerHTML = h || `<p class='text-slate-400 italic text-sm'>${LANGS[window.currentLang].noDiary}</p>`;
             document.getElementById('display-homework').innerText = homework;
+
+            if(!blockNotificationTriggers && window.currentUser && window.currentUser.role === 'student') {
+                showSmsNotification("Изменился личный Дневник или добавлено новое ДЗ!", "diary");
+            }
         });
+
+        setTimeout(() => { blockNotificationTriggers = false; }, 2500);
     }
 
-    // --- СИСТЕМА ИЗОЛИРОВАННЫХ И ИНДИВИДУАЛЬНЫХ ЧАТОВ ---
+    window.setOrderStatusAdminReady = (orderKey) => {
+        update(ref(db, `shop_orders/${orderKey}`), { 
+            status: 'ready',
+            arrivalCalDate: new Date().toLocaleString('ru-RU')
+        });
+    };
 
-    // Функция синхронизации сообщений конкретного чата (для Ученика или выбранного чата Учителя)
     function startChatMessagesSync(studentLogin) {
         if (chatListenerUnsubscribe) chatListenerUnsubscribe();
 
         const chatRef = ref(db, `chats/${studentLogin}`);
-        
-        // Находим ник ученика для заголовка окна переписки
         const studentObj = USERS.find(x => x.login === studentLogin);
         const nameTitle = studentObj ? studentObj.nick : studentLogin;
         document.getElementById('chat-window-title').innerText = currentUser.role === 'admin' ? `Чат с: ${nameTitle}` : "Личный чат с учителем";
@@ -885,67 +1190,56 @@
             const box = document.getElementById('chat-messages-box');
             box.innerHTML = h || `<p class="text-center text-slate-400 italic py-8">История пуста. Начните диалог прямо сейчас!</p>`;
             box.scrollTop = box.scrollHeight;
+
+            if(!blockNotificationTriggers && window.currentUser && window.currentUser.role === 'student') {
+                showSmsNotification("Пришло новое сообщение от учителя в чат!", "chat");
+            }
         });
     }
 
-    // Функция синхронизации боковой панели чатов (только для Учителя)
     function startAdminChatSidebarSync() {
         onValue(ref(db, 'chats'), snapshot => {
             if (currentUser.role !== 'admin') return;
-            
             const activeChatsData = snapshot.val() || {};
             let sidebarHtml = "";
 
             USERS.forEach(usr => {
                 if (usr.role === 'student') {
                     const hasMessages = activeChatsData[usr.login] !== undefined;
-                    // Если есть сообщения, берем последнее, иначе пишем "Нет сообщений"
                     let lastMsgText = "Диалог не начат";
                     if (hasMessages) {
                         const msgArray = Object.values(activeChatsData[usr.login]);
                         lastMsgText = msgArray[msgArray.length - 1].text;
                     }
-
                     const isActive = window.activeChatStudentLogin === usr.login;
-
                     sidebarHtml += `
                     <button onclick="window.selectAdminChat('${usr.login}')" class="w-full text-left p-3 flex flex-col gap-0.5 transition font-bold text-xs ${isActive ? 'bg-teal-50 text-teal-700 border-l-4 border-teal-600' : 'bg-white text-slate-700 hover:bg-slate-50'}">
                         <span class="text-sm font-black truncate text-slate-800">${usr.nick}</span>
                         <span class="text-[11px] text-slate-400 truncate font-normal">${lastMsgText}</span>
-                    </button>
-                    `;
+                    </button>`;
                 }
             });
-
             document.getElementById('admin-chat-list').innerHTML = sidebarHtml;
         });
     }
 
-    // Клик учителя по конкретному ученику в списке чатов
     window.selectAdminChat = (studentLogin) => {
         window.activeChatStudentLogin = studentLogin;
         startChatMessagesSync(studentLogin);
-        startAdminChatSidebarSync(); // Обновляем стили кнопок активности в сайдбаре
+        startAdminChatSidebarSync();
     };
 
-    // Отправка сообщений в выбранный изолированный чат
     window.sendChatMessage = () => {
         const input = document.getElementById('chat-msg-input');
         const text = input.value.trim();
         if(!text || !window.activeChatStudentLogin) return;
 
         push(ref(db, `chats/${window.activeChatStudentLogin}`), {
-            sender: currentUser.login,
-            senderNick: currentUser.nick,
+            sender: currentUser.login, senderNick: currentUser.nick,
             role: currentUser.role === 'admin' ? 'Учитель' : 'Ученик',
-            text: text,
-            timestamp: Date.now()
-        }).then(() => {
-            input.value = "";
-        });
+            text: text, timestamp: Date.now()
+        }).then(() => { input.value = ""; });
     };
-
-    // --- КОНЕЦ СИСТЕМЫ ЧАТОВ ---
 
     window.checkUrlForScannedOrder = () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -958,36 +1252,16 @@
                 if (snapshot.exists()) {
                     const data = snapshot.val();
                     const dCreated = data.time ? new Date(data.time).toLocaleString('ru-RU') : 'Не указана';
-                    
-                    let dDelivery = "Ожидает обработки";
-                    if(data.status === 'shipping' || data.status === 'ready') dDelivery = "Уже в пути / Готов к выдаче";
-                    if(data.status === 'completed') dDelivery = "Успешно доставлен и выдан";
-                    if(data.status === 'cancelled' || data.status === 'returned') dDelivery = "Отменено";
-                    if(data.time && data.status === 'ordered') {
-                        dDelivery = new Date(data.time + 2 * 24 * 60 * 60 * 1000).toLocaleDateString('ru-RU') + " (Ориентировочно)";
-                    }
-
-                    let statusText = "Заказано";
-                    if(data.status === 'shipping') statusText = "Доставляется 🚚";
-                    if(data.status === 'packing') statusText = "Собирается 📦";
-                    if(data.status === 'ready') statusText = "Можно забирать 🎉";
-                    if(data.status === 'completed') statusText = "Выдан 🏁";
-                    if(data.status === 'cancelled') statusText = "Отменен ❌";
-                    if(data.status === 'returned') statusText = "Возврат ↩️";
-
                     document.getElementById('modal-order-details').innerHTML = `
                         <div class="space-y-2">
                             <p><strong class="text-slate-800">Кто заказал:</strong> <span class="text-blue-600 font-bold">${data.studentNick}</span></p>
                             <p><strong class="text-slate-800">Что в заказе:</strong> <span class="text-slate-900 font-bold">"${data.itemTitle}"</span></p>
                             <p><strong class="text-slate-800">Стоимость товара:</strong> <span class="text-green-600 font-bold">${data.price} ⭐</span></p>
-                            <p><strong class="text-slate-800">Статус заказа:</strong> <span class="font-bold">${statusText}</span></p>
                             <hr class="my-2">
-                            <p><strong class="text-slate-800">Дата и время заказа:</strong> <span class="text-slate-700 font-semibold">${dCreated}</span></p>
-                            <p><strong class="text-slate-800">Дата доставки:</strong> <span class="text-slate-700 font-semibold">${dDelivery}</span></p>
-                        </div>
-                    `;
+                            <p><strong class="text-slate-800">Дата заказа:</strong> <span class="text-slate-700 font-semibold">${dCreated}</span></p>
+                        </div>`;
                 } else {
-                    document.getElementById('modal-order-details').innerHTML = `<p class="text-red-500 font-bold text-center">Ошибка: Заказ с таким кодом не найден в базе данных Firebase!</p>`;
+                    document.getElementById('modal-order-details').innerHTML = `<p class="text-red-500 font-bold text-center">Ошибка: Код не найден!</p>`;
                 }
             });
         }
@@ -995,51 +1269,32 @@
 
     window.cancelOrderByStudent = (orderKey, price) => {
         const reason = prompt("Укажите обязательную причину отмены заказа:");
-        if (!reason || reason.trim() === "") return alert("Отмена отклонена: причина является обязательной!");
+        if (!reason || reason.trim() === "") return alert("Отмена отклонена!");
         
         update(ref(db, `shop_orders/${orderKey}`), { status: 'cancelled', reason: reason }).then(() => {
             const userScoreRef = ref(db, `scores/${currentUser.login}`);
-            get(userScoreRef).then(snap => {
-                const currentStars = snap.val() || 0;
-                set(userScoreRef, currentStars + price).then(() => {
-                    alert("Заказ успешно отменен учеником. Звёзды возвращены!");
-                });
-            });
+            get(userScoreRef).then(snap => { set(ref(userScoreRef), (snap.val() || 0) + price); });
         });
     };
 
     window.cancelOrderAdmin = (orderKey, price) => {
         const reason = prompt("Укажите причину отмены заказа администратором:");
-        if (!reason || reason.trim() === "") return alert("Отмена отклонена: причина обязательна!");
-
+        if (!reason || reason.trim() === "") return;
         get(ref(db, `shop_orders/${orderKey}`)).then(snapOrder => {
             const orderData = snapOrder.val();
             update(ref(db, `shop_orders/${orderKey}`), { status: 'cancelled', reason: reason }).then(() => {
-                const studentScoreRef = ref(db, `scores/${orderData.student}`);
-                get(studentScoreRef).then(snapScore => {
-                    const currentStars = snapScore.val() || 0;
-                    set(studentScoreRef, currentStars + price).then(() => {
-                        alert("Заказ отменен администратором. Баланс ученика восстановлен.");
-                    });
-                });
+                get(ref(db, `scores/${orderData.student}`)).then(snapScore => { set(ref(db, `scores/${orderData.student}`), (snapScore.val() || 0) + price); });
             });
         });
     };
 
     window.returnOrderAdmin = (orderKey, price) => {
-        const reason = prompt("Покупатель оформляет возврат товара. Укажите причину брака или недовольства:");
-        if (!reason || reason.trim() === "") return alert("Возврат отклонен: необходимо указать причину брака/возврата!");
-
+        const reason = prompt("Укажите причину возврата товара:");
+        if (!reason || reason.trim() === "") return;
         get(ref(db, `shop_orders/${orderKey}`)).then(snapOrder => {
             const orderData = snapOrder.val();
             update(ref(db, `shop_orders/${orderKey}`), { status: 'returned', reason: reason }).then(() => {
-                const studentScoreRef = ref(db, `scores/${orderData.student}`);
-                get(studentScoreRef).then(snapScore => {
-                    const currentStars = snapScore.val() || 0;
-                    set(studentScoreRef, currentStars + price).then(() => {
-                        alert("Возврат товара зафиксирован. Звёзды возвращены на счет ученика!");
-                    });
-                });
+                get(ref(db, `scores/${orderData.student}`)).then(snapScore => { set(ref(db, `scores/${orderData.student}`), (snapScore.val() || 0) + price); });
             });
         });
     };
@@ -1050,144 +1305,138 @@
             get(itemRef).then(snap => {
                 if(snap.exists()) {
                     const item = snap.val();
-                    const currentTotal = item.ratingTotal || 0;
-                    const currentCount = item.ratingCount || 0;
-                    update(itemRef, {
-                        ratingTotal: currentTotal + ratingValue,
-                        ratingCount: currentCount + 1
-                    }).then(() => {
-                        alert("Спасибо за вашу оценку качества товара!");
-                    });
+                    update(itemRef, { ratingTotal: (item.ratingTotal || 0) + ratingValue, ratingCount: (item.ratingCount || 0) + 1 });
                 }
             });
         });
     };
 
     window.toggleProductStock = (key, currentStatus) => {
-        update(ref(db, `shop_items/${key}`), { available: !currentStatus }).then(() => {
-            alert("Статус наличия товара изменен!");
-        });
+        update(ref(db, `shop_items/${key}`), { available: !currentStatus });
     };
 
     window.setOrderStatus = (orderKey, statusString) => {
-        update(ref(db, `shop_orders/${orderKey}`), { status: statusString }).then(() => {
-            alert("Статус заказа успешно обновлен!");
-        });
+        update(ref(db, `shop_orders/${orderKey}`), { status: statusString });
     };
 
-    // ВСТРОЕННЫЙ QR-СКАНЕР В АДМИНКЕ (ЧИТАЕТ ОБЫЧНЫЙ ТЕКСТ-ID)
     window.startQrScanner = () => {
         document.getElementById('scanned-result-box').classList.add('hidden');
         html5QrcodeScanner = new Html5Qrcode("reader");
-        html5QrcodeScanner.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText) => {
-                window.stopQrScanner();
-                // Даже если отсканирован ID в виде текста, метод handleScannedOrder найдет его в Firebase
-                window.handleScannedOrder(decodedText);
-            },
-            () => {}
-        ).catch(() => alert("Не удалось получить доступ к камере устройства"));
+        html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, (decodedText) => { window.stopQrScanner(); window.handleScannedOrder(decodedText); }, () => {});
     };
 
-    window.stopQrScanner = () => {
-        if(html5QrcodeScanner) {
-            html5QrcodeScanner.stop().then(() => { html5QrcodeScanner = null; });
+    window.stopQrScanner = () => { if(html5QrcodeScanner) { html5QrcodeScanner.stop().then(() => { html5QrcodeScanner = null; }); } };
+
+    window.handleScannedOrder = (scannedData) => {
+        const resultBox = document.getElementById('scanned-result-box');
+        resultBox.classList.remove('hidden');
+
+        if (scannedData.includes("КОД ЗАКАЗА:") && scannedData.includes("ПОКУПАТЕЛЬ:")) {
+            try {
+                const lines = scannedData.split('\n');
+                const orderId = lines[0].replace("КОД ЗАКАЗА:", "").trim();
+                const buyer = lines[1].replace("ПОКУПАТЕЛЬ:", "").trim();
+                const item = lines[2].replace("ТОВАР:", "").trim();
+                const price = lines[3].replace("СТОИМОСТЬ:", "").trim();
+                const dateOrdered = lines[4].replace("ДАТА ЗАКАЗА:", "").trim();
+                const dateArrived = lines[5].replace("ДАТА ПРИБЫТИЯ:", "").trim();
+
+                resultBox.innerHTML = `
+                    <div class="text-xs font-black text-green-600 border-b pb-2 uppercase"><i class="fas fa-check-circle mr-1"></i> Текст QR-заказа расшифрован!</div>
+                    <div class="text-xs space-y-1.5 text-slate-700 mt-2 leading-relaxed">
+                        <p><b>Номер заказа (ID):</b> <span class="font-mono bg-slate-200 px-1 py-0.5 text-[10px] font-bold">${orderId}</span></p>
+                        <p><b>Кто заказал (Покупатель):</b> <span class="text-blue-600 font-bold">${buyer}</span></p>
+                        <p><b>Что в заказе (Состав):</b> <span class="text-slate-900 font-bold">${item}</span></p>
+                        <p><b>Стоимость списания:</b> <span class="text-green-600 font-black">${price}</span></p>
+                        <hr class="my-1">
+                        <p><b>Когда заказали (Дата):</b> ${dateOrdered}</p>
+                        <p><b>Время готовности к выдаче:</b> <span class="text-orange-600 font-bold">${dateArrived}</span></p>
+                    </div>
+                    <button onclick="window.confirmQrDelivery('${orderId}')" class="w-full bg-green-600 text-white font-black py-2 rounded-xl text-xs uppercase mt-3 shadow-md">Подтвердить выдачу</button>`;
+                return;
+            } catch(e) {
+                console.log("Ошибка структурированного разбора текста, уходим в фоллбэки...");
+            }
         }
-    };
 
-    window.handleScannedOrder = (orderKey) => {
-        get(ref(db, `shop_orders/${orderKey}`)).then(snapshot => {
+        get(ref(db, `shop_orders/${scannedData}`)).then(snapshot => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                const resultBox = document.getElementById('scanned-result-box');
-                resultBox.classList.remove('hidden');
                 resultBox.innerHTML = `
-                    <div class="text-xs font-black text-green-600 border-b pb-2 uppercase"><i class="fas fa-check-circle mr-1"></i> Заказ найден!</div>
-                    <div class="text-sm space-y-1 text-slate-700">
-                        <p><b>Код заказа:</b> <span class="font-mono bg-slate-200 px-1 py-0.5 rounded text-xs font-bold text-slate-800">${orderKey}</span></p>
-                        <p><b>Кто заказал:</b> <span class="text-blue-600 font-black">${data.studentNick}</span></p>
-                        <p><b>Что в заказе:</b> <span class="text-slate-900 font-black">"${data.itemTitle}"</span></p>
-                        <p><b>Цена товара:</b> <span class="text-green-600 font-bold">${data.price} ⭐</span></p>
+                    <div class="text-xs font-black text-green-600 border-b pb-2 uppercase"><i class="fas fa-check-circle mr-1"></i> Заказ найден в базе!</div>
+                    <div class="text-sm space-y-1 text-slate-700 mt-2">
+                        <p><b>Код заказа:</b> ${scannedData}</p>
+                        <p><b>Кто заказал:</b> ${data.studentNick}</p>
+                        <p><b>Товар:</b> "${data.itemTitle}"</p>
                     </div>
-                    <button onclick="window.confirmQrDelivery('${orderKey}')" class="w-full bg-green-600 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wide mt-2">
-                        ПОДТВЕРДИТЬ ВЫДАЧУ ТОВАРА УЧЕНИКУ
-                    </button>
-                `;
+                    <button onclick="window.confirmQrDelivery('${scannedData}')" class="w-full bg-green-600 text-white font-black py-2 rounded-xl text-xs uppercase mt-2">Подтвердить выдачу</button>`;
             } else {
-                alert("Ошибка: Считанный код заказа отсутствует в базе данных!");
+                resultBox.innerHTML = `
+                    <div class="text-xs font-black text-blue-600 border-b pb-2 uppercase"><i class="fas fa-info-circle mr-1"></i> Текст из QR-кода:</div>
+                    <p class="text-sm p-3 bg-slate-100 rounded-xl font-mono mt-2 font-bold whitespace-pre-line">${scannedData}</p>`;
             }
         });
     };
 
     window.confirmQrDelivery = (orderKey) => {
         update(ref(db, `shop_orders/${orderKey}`), { status: 'completed' }).then(() => {
-            alert("Заказ успешно закрыт и выдан ученику!");
+            alert("Товар успешно выдан ученику!");
             document.getElementById('scanned-result-box').classList.add('hidden');
         });
     };
 
-    function generateLeaderCardHtml(u, index) {
+    function generateLeaderCardHtml(u, index, profileMap) {
         const lang = window.currentLang;
-        let badgeHtml = "";
-        if (index === 0) {
-            badgeHtml = `<span class="place-badge">🥇 ${LANGS[lang].leaderText}</span>`;
-        } else {
-            badgeHtml = `<span class="place-badge">🥈 ${index + 1} ${LANGS[lang].placeText}</span>`;
-        }
-
+        const meta = profileMap[u.login] || { subscription: 'Free', avatar: '', emoji: '', nick: u.nick };
+        
+        let badgeHtml = index === 0 ? `<span class="place-badge">🥇 ${LANGS[lang].leaderText}</span>` : `<span class="place-badge">🥈 ${index + 1} ${LANGS[lang].placeText}</span>`;
         const studentGrades = allStudentsGradesGlobal[u.login] || [];
-        let gradesListHtml = `<span class="no-grades-label">${LANGS[lang].noGrades}</span>`;
-        if (studentGrades.length > 0) {
-            gradesListHtml = studentGrades.map(g => `<span class="grade-inline-badge">${g}</span>`).join(' ');
-        }
+        let gradesListHtml = studentGrades.length > 0 ? studentGrades.map(g => `<span class="grade-inline-badge">${g}</span>`).join(' ') : `<span class="no-grades-label">${LANGS[lang].noGrades}</span>`;
+        
+        const avatarSrc = meta.avatar || `https://ui-avatars.com/api/?name=User&background=random`;
+        const isPro = meta.subscription === 'premium';
+        const subLabelHtml = isPro ? `<span class="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md mt-1 inline-block">🏆 PRO</span>` : `<span class="text-[9px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md mt-1 inline-block">Free</span>`;
+        const emojiStatusHtml = meta.emoji ? `<span class="ml-1 text-sm">${meta.emoji === 'PRO' ? '🏆 PRO' : meta.emoji}</span>` : '';
 
         return `
         <div class="leader-card">
-            <div class="card-main-info">
-                <div class="badge-row">
-                    ${badgeHtml}
-                    <span class="class-badge">${u.class}</span>
-                </div>
-                <h3 class="student-name">${u.nick}</h3>
-                <div class="grades-info">
-                    ${LANGS[lang].allGradesText} ${gradesListHtml}
+            <div class="flex items-center gap-4">
+                <img src="${avatarSrc}" class="w-12 h-12 rounded-full border border-slate-200 object-cover">
+                <div class="card-main-info">
+                    <div class="badge-row">${badgeHtml}<span class="class-badge">${u.class}</span></div>
+                    <h3 class="student-name">${meta.nick || u.nick} ${emojiStatusHtml}</h3>
+                    <div>${subLabelHtml}</div>
+                    <div class="grades-info mt-1">${LANGS[lang].allGradesText} ${gradesListHtml}</div>
                 </div>
             </div>
-            <div class="points-badge">
-                <span class="star-icon">★</span>
-                <span class="points-text">${u.score} ${LANGS[lang].pointsText}</span>
-            </div>
+            <div class="points-badge"><span class="star-icon">★</span><span class="points-text">${u.score} ${LANGS[lang].pointsText}</span></div>
         </div>`;
     }
 
     function renderRatingsSystem() {
-        get(ref(db, 'scores')).then(snap => {
-            const scores = snap.val() || {};
-            const list = USERS.filter(x => x.role === 'student').map(u => {
-                return { login: u.login, nick: u.nick, class: u.class || LANGS[window.currentLang].noClass, score: scores[u.login] || 0 };
-            });
+        get(ref(db, 'scores')).then(scoreSnap => {
+            get(ref(db, 'custom_profiles')).then(profSnap => {
+                const scores = scoreSnap.val() || {};
+                const profiles = profSnap.val() || {};
 
-            list.sort((a,b) => b.score - a.score);
-
-            if(window.currentUser && window.currentUser.role === 'student') {
-                const myData = list.find(x => x.login === window.currentUser.login);
-                if(myData) document.getElementById('user-total-score').innerText = myData.score;
-
-                const classList = list.filter(x => x.class === window.currentUser.class);
-                let classHtml = "";
-                classList.forEach((u, i) => {
-                    classHtml += generateLeaderCardHtml(u, i);
+                const list = USERS.filter(x => x.role === 'student').map(u => {
+                    const meta = profiles[u.login] || {};
+                    return { login: u.login, nick: meta.nick || u.nick, class: u.class || LANGS[window.currentLang].noClass, score: scores[u.login] || 0 };
                 });
-                document.getElementById('class-rating-container').innerHTML = classHtml;
-            }
+                list.sort((a,b) => b.score - a.score);
 
-            let schoolHtml = "";
-            list.forEach((u, i) => {
-                schoolHtml += generateLeaderCardHtml(u, i);
+                if(window.currentUser && window.currentUser.role === 'student') {
+                    const myData = list.find(x => x.login === window.currentUser.login);
+                    if(myData) document.getElementById('user-total-score').innerText = myData.score;
+
+                    const classList = list.filter(x => x.class === window.currentUser.class);
+                    let classHtml = ""; classList.forEach((u, i) => { classHtml += generateLeaderCardHtml(u, i, profiles); });
+                    document.getElementById('class-rating-container').innerHTML = classHtml;
+                }
+
+                let schoolHtml = ""; list.forEach((u, i) => { schoolHtml += generateLeaderCardHtml(u, i, profiles); });
+                document.getElementById('school-rating-container').innerHTML = schoolHtml;
             });
-            document.getElementById('school-rating-container').innerHTML = schoolHtml;
         });
     }
 
@@ -1198,18 +1447,12 @@
         const icon = document.getElementById('shop-icon-input').value;
         const imgUrl = document.getElementById('shop-img-input').value.trim();
 
-        if(!title || isNaN(price)) return alert("Заполните название и цену товара!");
+        if(!title || isNaN(price)) return alert("Заполните поля!");
 
         if (editShopItemKey) {
-            update(ref(db, `shop_items/${editShopItemKey}`), { title, desc, price, icon, imgUrl }).then(() => {
-                alert("Товар успешно обновлен!");
-                window.cancelShopEdit();
-            });
+            update(ref(db, `shop_items/${editShopItemKey}`), { title, desc, price, icon, imgUrl }).then(() => { window.cancelShopEdit(); });
         } else {
-            push(ref(db, 'shop_items'), { title, desc, price, icon, imgUrl, available: true, ratingTotal: 0, ratingCount: 0 }).then(() => {
-                alert("Товар успешно добавлен!");
-                window.clearShopForm();
-            });
+            push(ref(db, 'shop_items'), { title, desc, price, icon, imgUrl, available: true, ratingTotal: 0, ratingCount: 0 }).then(() => { window.clearShopForm(); });
         }
     };
 
@@ -1221,7 +1464,6 @@
         document.getElementById('shop-price-input').value = data.price || "";
         document.getElementById('shop-img-input').value = data.imgUrl || "";
         document.getElementById('shop-icon-input').value = data.icon || "fa-box";
-        
         document.getElementById('admin-shop-submit-btn').innerText = "СОХРАНИТЬ ИЗМЕНЕНИЯ";
         document.getElementById('admin-shop-cancel-edit-btn').classList.remove('hidden');
     };
@@ -1243,35 +1485,20 @@
     };
 
     window.deleteShopItem = (key) => {
-        if(confirm("Вы уверены, что хотите полностью удалить этот товар?")) {
-            remove(ref(db, `shop_items/${key}`)).then(() => {
-                alert("Товар удален!");
-                if(editShopItemKey === key) window.cancelShopEdit();
-            });
-        }
+        if(confirm("Удалить товар?")) { remove(ref(db, `shop_items/${key}`)).then(() => { if(editShopItemKey === key) window.cancelShopEdit(); }); }
     };
 
-    window.buyItem = (key, price, title) => {
+    window.buyItem = (key, price, title, desc) => {
         const userScoreRef = ref(db, `scores/${currentUser.login}`);
         get(userScoreRef).then(s => {
             const currentStars = s.val() || 0;
-            if(currentStars < price) {
-                alert("Недостаточно звёзд для покупки!");
-                return;
-            }
+            if(currentStars < price) return alert("Недостаточно звёзд!");
+            
             set(userScoreRef, currentStars - price).then(() => {
                 push(ref(db, 'shop_orders'), {
-                    student: currentUser.login,
-                    studentNick: currentUser.nick,
-                    itemKey: key,
-                    itemTitle: title,
-                    price: price,
-                    status: 'ordered',
-                    rated: false,
-                    time: Date.now()
-                }).then(() => {
-                    alert("Успешно куплено!");
-                });
+                    student: currentUser.login, studentNick: currentUser.nick,
+                    itemKey: key, itemTitle: title, price: price, status: 'ordered', rated: false, time: Date.now()
+                }).then(() => { alert("Успешно куплено!"); });
             });
         });
     };
@@ -1283,7 +1510,6 @@
         const comment = document.getElementById('grade-comment').value.trim();
         const date = document.getElementById('grade-date').value;
         const color = document.getElementById('grade-color').value;
-        
         let starsReward = parseInt(document.getElementById('grade-stars-reward').value);
         if(isNaN(starsReward) || starsReward < 0) starsReward = 0;
 
@@ -1293,19 +1519,15 @@
         const newGrade = {
             student: student, studentNick: target ? target.nick : student,
             title: subject, score: score, comment: comment,
-            workDate: date ? new Date(date).getTime() : Date.now(),
-            color: color
+            workDate: date ? new Date(date).getTime() : Date.now(), color: color
         };
 
         push(ref(db, 'results'), newGrade).then(() => {
             if(starsReward > 0) {
                 const studentScoreRef = ref(db, `scores/${student}`);
-                get(studentScoreRef).then(snap => {
-                    const currentStars = snap.val() || 0;
-                    set(studentScoreRef, currentStars + starsReward);
-                });
+                get(studentScoreRef).then(snap => { set(studentScoreRef, (snap.val() || 0) + starsReward); });
             }
-            alert(`Оценка успешно выставлена! Начислено звезд: ${starsReward} 🌟`);
+            alert("Оценка выставлена!");
             document.getElementById('grade-subject').value = "";
             document.getElementById('grade-value').value = "";
             document.getElementById('grade-comment').value = "";
@@ -1338,9 +1560,8 @@
                 <option value="5" ${dayIdx == "5" ? 'selected' : ''}>Суббота</option>
             </select>
             <input type="text" placeholder="08:30-09:15" value="${timeStr}" class="lesson-time-input p-2.5 bg-white border rounded-xl text-xs w-28 text-center font-semibold outline-none">
-            <input type="text" placeholder="Предмет" value="${nameStr}" class="lesson-name-input p-2.5 bg-white border rounded-xl text-xs flex-1 font-bold outline-none">
-            <button onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 font-bold px-2 text-sm">✕</button>
-        `;
+            <input type="text" placeholder="Predmet" value="${nameStr}" class="lesson-name-input p-2.5 bg-white border rounded-xl text-xs flex-1 font-bold outline-none">
+            <button onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 font-bold px-2 text-sm">✕</button>`;
         container.appendChild(div);
     };
 
@@ -1351,7 +1572,6 @@
         get(ref(db, `diaries/${student}`)).then(snapshot => {
             const container = document.getElementById('admin-lessons-list');
             container.innerHTML = "";
-            
             const data = snapshot.val() || {};
             const schedule = data.schedule || {};
             document.getElementById('admin-homework-input').value = data.homework || "";
@@ -1359,12 +1579,8 @@
             let hasLessons = false;
             Object.keys(schedule).forEach(dayIdx => {
                 const dayLessons = schedule[dayIdx] ? Object.values(schedule[dayIdx]) : [];
-                dayLessons.forEach(lesson => {
-                    hasLessons = true;
-                    window.addLessonRowAdmin(dayIdx, lesson.time || "", lesson.name || "");
-                });
+                dayLessons.forEach(lesson => { hasLessons = true; window.addLessonRowAdmin(dayIdx, lesson.time || "", lesson.name || ""); });
             });
-
             if(!hasLessons) window.addLessonRowAdmin("0", "", "");
         });
     };
@@ -1382,10 +1598,7 @@
             if(name) scheduleGrouped[dayIdx].push({ name: name, time: time });
         });
 
-        set(ref(db, `diaries/${student}`), { schedule: scheduleGrouped, homework: homeworkText }).then(() => {
-            alert("Обновлено!");
-            window.loadStudentDiaryAdmin();
-        });
+        set(ref(db, `diaries/${student}`), { schedule: scheduleGrouped, homework: homeworkText }).then(() => { alert("Обновлено!"); window.loadStudentDiaryAdmin(); });
     };
 
     window.addTestQuestionUI = () => {
@@ -1430,17 +1643,11 @@
             const correct = document.getElementById(`q-correct-${i}`).value;
             const points = document.getElementById(`q-points-${i}`).value || 10;
 
-            if(txt && opts.length > 0) {
-                questions.push({ text: txt, opts: opts, correct: correct, points: points });
-            }
+            if(txt && opts.length > 0) { questions.push({ text: txt, opts: opts, correct: correct, points: points }); }
         }
 
         if(questions.length === 0) return;
-        push(ref(db, 'tests'), { title: title, questions: questions }).then(() => {
-            alert("Тест создан!");
-            document.getElementById('test-title-input').value = "";
-            container.innerHTML = "";
-        });
+        push(ref(db, 'tests'), { title: title, questions: questions }).then(() => { alert("Тест создан!"); document.getElementById('test-title-input').value = ""; container.innerHTML = ""; });
     };
 
     window.updateClassInputLabel = () => {
@@ -1460,20 +1667,13 @@
 
     window.removeClass = () => {
         const student = document.getElementById('manage-class-student').value;
-        set(ref(db, `user_classes/${student}`), "").then(() => {
-            alert("Удален!");
-            document.getElementById('manage-class-name').value = "";
-        });
+        const classRef = ref(db, `user_classes/${student}`);
+        set(classRef, "").then(() => { alert("Удален!"); document.getElementById('manage-class-name').value = ""; });
     };
 
     document.addEventListener("DOMContentLoaded", () => {
         const session = localStorage.getItem('maktab_pro_session');
-        if(session) {
-            const savedUser = JSON.parse(session);
-            window.handleLogin(savedUser);
-        } else {
-            window.checkUrlForScannedOrder();
-        }
+        if(session) { window.handleLogin(JSON.parse(session)); } else { window.checkUrlForScannedOrder(); }
     });
 </script>
 </body>
